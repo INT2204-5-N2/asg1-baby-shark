@@ -11,9 +11,9 @@ public class Dictionary {
     public static void getDataFromFile(String pathname){
         dictionary = new TreeMap<String, String>();
         try {
-            File f = new File(pathname);
-            FileReader fr = new FileReader(f);
-            BufferedReader br = new BufferedReader(fr);
+            FileInputStream fileInPutStream = new FileInputStream(pathname);
+            Reader reader = new InputStreamReader(fileInPutStream, "utf8");
+            BufferedReader br = new BufferedReader(reader);
             String line;
             while ((line = br.readLine()) != null) {
                 String[] temp = line.split("\t",2);
@@ -25,7 +25,7 @@ public class Dictionary {
                 }
                 dictionary.put(temp[0],detail);
             }
-            fr.close();
+            fileInPutStream.close();
             br.close();
 
         } catch (FileNotFoundException e) {
