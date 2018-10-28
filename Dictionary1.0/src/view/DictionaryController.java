@@ -1,185 +1,108 @@
-package view;
+package data;
 
-import data.Dictionary;
-import javafx.fxml.FXML;
-import javafx.geometry.Insets;
-import javafx.scene.Node;
-import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.scene.text.Text;
-import javafx.util.Pair;
-import speak.Speak;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
-import java.util.Optional;
+import java.io.*;
+import java.util.TreeMap;
 
-public class DictionaryController {
-    @FXML
-    TextField tfSearch;
-    @FXML
-    Text word;
-    @FXML
-    TextArea textDetail;
-    @FXML
-    ListView<String> list;
-
-    public void initialize() {
-        Dictionary.getDataFromFile("dict.txt");
-        list.setItems(Dictionary.getAllWord());
-        tfSearchChangedValue();
-        listChangedValue();
-    }
-
-    private void listChangedValue(){
+public class Dictionary {
+    private static TreeMap<String,String> dictionary;
+    public static void getDataFromFile(String pathname){
+        dictionary = new TreeMap<String, String>();
         try {
-            list.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-                if (newValue != null){
-                //tfSearch.setText(newValue);
-                textDetail.setText("");
-                word.setText("");
-                if (Dictionary.getDetail(newValue) != null) {
-                    textDetail.setText(Dictionary.getDetail(newValue));
-                    word.setText(newValue);
-                } else {
-                    textDetail.setText("");
-                    word.setText("");
-                }
-            }});
-        } catch (NullPointerException e){
+            FileInputStream fileInPutStream = new FileInputStream(pathname);
+            Reader reader = new InputStreamReader(fileInPutStream, "utf8");
+            BufferedReader br = new BufferedReader(reader);
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] temp = line.split("\t",2);
+                if (temp.length == 2){
+                dictionary.put(temp[0],temp[1]);}
+            }
+            fileInPutStream.close();
+            br.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e){
+            e.printStackTrace();
         }
     }
-
-    private void tfSearchChangedValue() {
-        tfSearch.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue!=null)
-                list.getItems().removeAll();
-                list.setItems(Dictionary.getWordSearch(newValue));
-                list.getSelectionModel().selectFirst();
-            if (Dictionary.getDetail(newValue)==null)
-            {
-                word.setText("");
-                textDetail.setText("");
-            }
-        });
-    }
-
-    public void tfSearchAction() {
+    public static void setDataToFile(TreeMap<String,String> dictionary){
         try {
-            String str = tfSearch.getText().trim().toLowerCase();
-            if (!str.equals("")) {
-                if (Dictionary.getDetail(str) == null) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Error");
-                    alert.setContentText("The word don't have in Dictionary");
-                    alert.showAndWait();
-                } else {
-                    word.setText(str);
-                    textDetail.setText(Dictionary.getDetail(str));
-                }
+            File file = new File("/Dictionary1.0/src/data/dict.txt");
+            if (!file.exists()) {
+                file.createNewFile();
             }
-        } catch (Exception e) {
-            System.out.println(e);
+            FileWriter fw = new FileWriter(file);
+            BufferedWriter bw = new BufferedWriter(fw);
+            for (String key: dictionary.keySet()) {
+                bw.write(key + "\t" + Dictionary.getDetail(key) + "\n");
+            }
+            fw.close();
+            bw.close();
+        } catch (IOException e){
+
+        } catch (Exception e){
+
         }
     }
-
-    public void buttonAddOnClicked(){
-        Dialog<Pair<String,String>> dialog = new Dialog();
-        dialog.setTitle("Add Word");
-        dialog.setHeaderText("Do you want to add new word ?");
-        ButtonType okButtonType = new ButtonType("Accept", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(okButtonType, ButtonType.CANCEL);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
-
-        TextField newWord = new TextField();
-        newWord.setPromptText("Ex : Hello");
-        TextField newDetail = new TextField();
-        newDetail.setPromptText("Ex : Xin chao");
-
-        grid.add(new Label("Word: "),0,0);
-        grid.add(newWord,0,1);
-        grid.add(new Label("Detail: "),1,0);
-        grid.add(newDetail,1,1);
-
-        Node okButton = dialog.getDialogPane().lookupButton(okButtonType);
-        okButton.setDisable(true);
-
-
-        newWord.textProperty().addListener((observable, oldValue, newValue) -> {
-            okButton.setDisable(newValue.trim().isEmpty());
-        });
-        dialog.getDialogPane().setContent(grid);
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == okButtonType){
-                if (Dictionary.getDetail(newWord.getText()) != null)
-                {
-                    Alert alert1 = new Alert(Alert.AlertType.ERROR);
-                    alert1.setContentText("The word existed in Dictionary");
-                    alert1.showAndWait();
-                }
-                else{
-                    Dictionary.addWord(newWord.getText(),newDetail.getText());
-                    Alert alert2 = new Alert(Alert.AlertType.INFORMATION);
-                    alert2.setContentText("The word added successful");
-                    alert2.showAndWait();
-                }
-
+    public static void insert1WordToFile(String word, String detail) {
+        try {
+            File file = new File("/Dictionary1.0/src/data/dict.txt");
+            if (!file.exists()) {
+                file.createNewFile();
             }
-            return null;
-        } );
-            dialog.showAndWait();
-    }
+            FileWriter fw = new FileWriter(file, true);
+            PrintWriter pw = new PrintWriter(fw);
+            pw.println(word + "\t" + detail);
+            fw.close();
+            pw.close();
+        } catch (IOException e){
 
-    public void buttonEditOnClicked(){
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Edit");
-        dialog.setHeaderText("Are you want to edit ?");
-        dialog.setContentText("New Mean: ");
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent()){
-            String newMean = result.get();
-            String wordInstance = list.getSelectionModel().getSelectedItem();
-            if (wordInstance == null){
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setContentText("You don't choose word");
-                alert.showAndWait();
-            }
-            else {
-                Dictionary.removeWord(wordInstance);
-                Dictionary.addWord(wordInstance,newMean);
-                textDetail.setText(newMean);
-            }
+        } catch (Exception e){
+
         }
     }
-    public void buttonRemoveOnClicked(){
-        Alert confirmRemove = new Alert(Alert.AlertType.NONE);
-        confirmRemove.setTitle("Message");
-        confirmRemove.setContentText("Are you want to delete this word  ?");
-        ButtonType buttonTypeOk = new ButtonType("Yes", ButtonBar.ButtonData.OK_DONE);
-        ButtonType buttonTypeCancel = new ButtonType("No", ButtonBar.ButtonData.CANCEL_CLOSE);
-        confirmRemove.getButtonTypes().addAll(buttonTypeOk,buttonTypeCancel);
-        Optional<ButtonType> resultRemove = confirmRemove.showAndWait();
-
-        if(resultRemove.get()==buttonTypeOk){
-            try {
-                Dictionary.removeWord(list.getSelectionModel().getSelectedItem());
-                list.getItems().removeAll();
-                list.setItems(Dictionary.getAllWord());
-            }
-            catch (Exception e){
-                Alert alert2 = new Alert(Alert.AlertType.ERROR);
-                alert2.setContentText("You don't choose word");
-                alert2.showAndWait();
-            }
-        }
-        else{
-            confirmRemove.close();
-        }
-
+    public static void addWord(String word,String detail) {
+        dictionary.put(word,detail);
+        Dictionary.insert1WordToFile(word,detail);
     }
-    public void buttonSpeakOnClicked(){
-        new Speak(word.getText());
+    public static void removeWord(String word){
+        dictionary.remove(word);
+        setDataToFile(dictionary);
     }
+    public static void editWord(String word, String detail){
+        dictionary.remove(word);
+        dictionary.put(word,detail);
+        setDataToFile(dictionary);
+    }
+    public static String getDetail(String word){
+        if (dictionary.get(word) != null){
+        String detail = "";
+        String[] temp = dictionary.get(word).split("\t");
+        for (int i=0; i<temp.length; i++)
+        {
+            detail = detail.concat(temp[i]+"\n");
+        }
+        return detail;}
+        else return null;
+    }
+    public static ObservableList<String> getWordSearch(String word){
+        ObservableList<String> temp = FXCollections.observableArrayList();
+        word = word.trim().toLowerCase();
+        for (String key : dictionary.keySet()){
+            if (key.startsWith(word)) temp.add(key);
+        }
+        return temp;
+    }
+    public static ObservableList<String> getAllWord(){
+        ObservableList<String> temp = FXCollections.observableArrayList();
+        for (String key : dictionary.keySet()){
+            temp.add(key);
+        }
+        return temp;
+    }
+
 }
